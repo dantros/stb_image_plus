@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <initializer_list>
+#include <memory>
 #include <span>
 
 namespace stb_image_plus
@@ -11,10 +12,11 @@ template <std::size_t DesiredChannels>
 struct PixelT
 {
 public:
-    PixelT() : mData() {};
+    PixelT() = default;
     PixelT(std::initializer_list<std::uint8_t> values);
     const std::uint8_t& operator[](std::size_t coord) const;
     std::uint8_t& operator[](std::size_t coord);
+    std::size_t channels() const;
 
 private:
     std::array<std::uint8_t, DesiredChannels> mData;
@@ -28,6 +30,9 @@ public:
 
     ImageData();
     ImageData(const std::string& filename);
+
+    // ImageData takes ownership of pixelsPtr. Number of pixels must be width * height.
+    ImageData(Pixel* pixelsPtr, std::size_t width, std::size_t height);
     bool read(const std::string& filename);
     bool write(const std::string& filename);
     bool isValid() const;
@@ -45,7 +50,8 @@ public:
     ~ImageData();
 
 private:
-    unsigned char* mData;
+    struct PixelContainer;
+    std::unique_ptr<PixelContainer> mPixelsPtr;
     std::size_t mWidth, mHeight, mInternalChannels;
 };
 

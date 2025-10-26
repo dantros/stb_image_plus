@@ -41,8 +41,20 @@ std::uint8_t& PixelT<DesiredChannels>::operator[](std::size_t coord)
 }
 
 template <std::size_t DesiredChannels>
+std::size_t PixelT<DesiredChannels>::channels() const
+{
+    return DesiredChannels;
+}
+
+template <std::size_t DesiredChannels>
+struct ImageData<DesiredChannels>::PixelContainer
+{
+    unsigned char* data;
+};
+
+template <std::size_t DesiredChannels>
 ImageData<DesiredChannels>::ImageData() :
-    mData(nullptr),
+    mPixelsPtr(),
     mWidth(0),
     mHeight(0),
     mInternalChannels(0)
@@ -50,40 +62,70 @@ ImageData<DesiredChannels>::ImageData() :
 }
 
 template <std::size_t DesiredChannels>
-ImageData<DesiredChannels>::ImageData(const std::string &filename)
+ImageData<DesiredChannels>::ImageData(const std::string &filename) :
+    mPixelsPtr(),
+    mWidth(0),
+    mHeight(0),
+    mInternalChannels(0)
 {
     read(filename);
 }
 
 template <std::size_t DesiredChannels>
+ImageData<DesiredChannels>::ImageData(Pixel* pixels, std::size_t width, std::size_t height) :
+    mPixelsPtr(std::make_unique<typename ImageData<DesiredChannels>::PixelContainer>()),
+    mWidth(width),
+    mHeight(height),
+    mInternalChannels(0)
+{
+    DebugCheck(mPixelsPtr != nullptr);
+    DebugCheck(pixels);
+    mPixelsPtr->data = reinterpret_cast<unsigned char*>(pixels);
+    mInternalChannels = pixels->channels();
+}
+
+template <std::size_t DesiredChannels>
 bool ImageData<DesiredChannels>::read(const std::string &filename)
 {
+    DebugCheck(mPixelsPtr == nullptr);
+
     int width = 0, height = 0, internalChannels = 0;
-    mData = stbi_load(filename.c_str(), &width, &height, &internalChannels, DesiredChannels);
+    unsigned char* data = stbi_load(filename.c_str(), &width, &height, &internalChannels, DesiredChannels);
+
+    using PixelContainer = typename ImageData<DesiredChannels>::PixelContainer;
+    std::unique_ptr<PixelContainer> pixelContainer = std::make_unique<PixelContainer>();
+    DebugCheck(pixelContainer != nullptr);
+    pixelContainer->data = data;
+
+    mPixelsPtr.swap(pixelContainer);
     mWidth = static_cast<std::size_t>(width);
     mHeight = static_cast<std::size_t>(height);
     mInternalChannels = static_cast<std::size_t>(internalChannels);
-    return mData != nullptr;
+
+    return mPixelsPtr->data != nullptr;
 }
 
 template <std::size_t DesiredChannels>
 bool ImageData<DesiredChannels>::write(const std::string &filename)
 {
-    int result = stbi_write_bmp(filename.c_str(), width(), height(), DesiredChannels, mData);
+    DebugCheck(mPixelsPtr != nullptr);
+    int result = stbi_write_bmp(filename.c_str(), width(), height(), DesiredChannels, mPixelsPtr->data);
     return result == 0;
 }
 
 template <std::size_t DesiredChannels>
 bool ImageData<DesiredChannels>::isValid() const
 {
-    return mData != nullptr;
+    DebugCheck(mPixelsPtr != nullptr);
+    return mPixelsPtr->data != nullptr;
 }
 
 template <std::size_t DesiredChannels>
 std::span<typename ImageData<DesiredChannels>::Pixel> ImageData<DesiredChannels>::pixelSpan()
 {
+    DebugCheck(mPixelsPtr != nullptr);
     using Pixel = typename ImageData<DesiredChannels>::Pixel;
-    Pixel* firstPixelPtr = reinterpret_cast<Pixel*>(mData);
+    Pixel* firstPixelPtr = reinterpret_cast<Pixel*>(mPixelsPtr->data);
     const std::size_t numberOfPixels = mWidth * mHeight;
     return std::span<Pixel>(firstPixelPtr, numberOfPixels);
 }
@@ -91,8 +133,9 @@ std::span<typename ImageData<DesiredChannels>::Pixel> ImageData<DesiredChannels>
 template <std::size_t DesiredChannels>
 std::span<const typename ImageData<DesiredChannels>::Pixel> ImageData<DesiredChannels>::pixelSpan() const
 {
+    DebugCheck(mPixelsPtr != nullptr);
     using Pixel = typename ImageData<DesiredChannels>::Pixel;
-    const Pixel* firstPixelPtr = reinterpret_cast<const Pixel*>(mData);
+    const Pixel* firstPixelPtr = reinterpret_cast<const Pixel*>(mPixelsPtr->data);
     const std::size_t numberOfPixels = mWidth * mHeight;
     return std::span<const Pixel>(firstPixelPtr, numberOfPixels);
 }
@@ -124,20 +167,17 @@ typename ImageData<DesiredChannels>::Pixel& ImageData<DesiredChannels>::at(std::
 template <std::size_t DesiredChannels>
 ImageData<DesiredChannels> ImageData<DesiredChannels>::resize(std::size_t width, std::size_t height)
 {
-    ImageData<DesiredChannels> output;
-    output.mData = nullptr;
-    output.mWidth = width;
-    output.mHeight = height;
-    output.mInternalChannels = DesiredChannels;
-
     // This may not work as expected for pixel layouts different than STBIR_1CHANNEL, STBIR_2CHANNEL, STBIR_RGB, STBIR_RGBA
     stbir_pixel_layout pixelLayout = static_cast<stbir_pixel_layout>(DesiredChannels);
 
-    output.mData = stbir_resize_uint8_srgb(
-        mData, mWidth, mHeight, DesiredChannels * mWidth,
+    unsigned char* dataAsUnsignedChars = stbir_resize_uint8_srgb(
+        mPixelsPtr->data, mWidth, mHeight, DesiredChannels * mWidth,
         NULL, width, height, DesiredChannels * width, pixelLayout);
 
-    return output;
+    using Pixel = typename ImageData<DesiredChannels>::Pixel;
+    Pixel* dataAsPixels = reinterpret_cast<Pixel*>(dataAsUnsignedChars);
+
+    return {dataAsPixels, width, height};
 }
 
 template <std::size_t DesiredChannels>
@@ -157,9 +197,12 @@ ImageData<DesiredChannels> ImageData<DesiredChannels>::resizeToHeight(std::size_
 template <std::size_t DesiredChannels>
 ImageData<DesiredChannels>::~ImageData()
 {
-    if (mData == nullptr)
+    DebugCheck(mPixelsPtr != nullptr);
+    PixelContainer* pixels = mPixelsPtr.release();
+    DebugCheck(pixels != nullptr);
+    if (pixels->data == nullptr)
         return;
-    stbi_image_free(mData);
+    stbi_image_free(pixels->data);
 }
 
 // template instantiations
