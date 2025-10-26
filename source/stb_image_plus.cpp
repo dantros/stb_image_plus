@@ -72,16 +72,19 @@ ImageData<DesiredChannels>::ImageData(const std::string &filename) :
 }
 
 template <std::size_t DesiredChannels>
-ImageData<DesiredChannels>::ImageData(Pixel* pixels, std::size_t width, std::size_t height) :
+ImageData<DesiredChannels>::ImageData(std::span<Pixel> pixelSpan, std::size_t width, std::size_t height) :
     mPixelsPtr(std::make_unique<typename ImageData<DesiredChannels>::PixelContainer>()),
     mWidth(width),
     mHeight(height),
     mInternalChannels(0)
 {
     DebugCheck(mPixelsPtr != nullptr);
-    DebugCheck(pixels);
-    mPixelsPtr->data = reinterpret_cast<unsigned char*>(pixels);
-    mInternalChannels = pixels->channels();
+    DebugCheck(pixelSpan.size() == width * height);
+    auto firstPixelIt = pixelSpan.begin();
+    Pixel& firstPixel = *firstPixelIt;
+    Pixel* firstPixelAddress = &firstPixel;
+    mPixelsPtr->data = reinterpret_cast<unsigned char*>(firstPixelAddress);
+    mInternalChannels = firstPixel.channels();
 }
 
 template <std::size_t DesiredChannels>
@@ -176,8 +179,8 @@ ImageData<DesiredChannels> ImageData<DesiredChannels>::resize(std::size_t width,
 
     using Pixel = typename ImageData<DesiredChannels>::Pixel;
     Pixel* dataAsPixels = reinterpret_cast<Pixel*>(dataAsUnsignedChars);
-
-    return {dataAsPixels, width, height};
+    std::span<Pixel> pixelSpan(dataAsPixels, width * height);
+    return {pixelSpan, width, height};
 }
 
 template <std::size_t DesiredChannels>

@@ -31,8 +31,10 @@ public:
     ImageData();
     ImageData(const std::string& filename);
 
-    // ImageData takes ownership of pixelsPtr. Number of pixels must be width * height.
-    ImageData(Pixel* pixelsPtr, std::size_t width, std::size_t height);
+    /* ImageData takes ownership of the memory pointed to by pixelSpan.
+     * Number of pixels must be equal to width * height. */
+    ImageData(std::span<Pixel> pixelSpan, std::size_t width, std::size_t height);
+    
     bool read(const std::string& filename);
     bool write(const std::string& filename);
     bool isValid() const;
