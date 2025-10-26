@@ -8,7 +8,7 @@ add_library(stb_image_orig STATIC
     "stb_image/stb_image_resize2.h"
     "stb_image/stb_image_write.h"
 )
-set_property(TARGET stb_image_orig PROPERTY CXX_STANDARD 11)
+set_property(TARGET stb_image_orig PROPERTY CXX_STANDARD 20)
 
 set(STB_IMAGE_PLUS_PUBLIC_HEADERS "include/stb_image_plus.h")
 
@@ -18,14 +18,14 @@ add_library(stb_image_plus STATIC
 )
 target_include_directories(stb_image_plus PRIVATE "stb_image" "include")
 target_link_libraries(stb_image_plus PRIVATE stb_image_orig)
-set_property(TARGET stb_image_plus PROPERTY CXX_STANDARD 17)
+set_property(TARGET stb_image_plus PROPERTY CXX_STANDARD 20)
 
 option(STB_IMAGE_PLUS_BUILD_DEMO "" OFF)
 if(${STB_IMAGE_PLUS_BUILD_DEMO})
     add_executable(resize_demo "demo/resize_demo.cpp")
     target_include_directories(resize_demo PRIVATE "include")
     target_link_libraries(resize_demo PRIVATE stb_image_plus)
-    set_property(TARGET resize_demo PROPERTY CXX_STANDARD 17)
+    set_property(TARGET resize_demo PROPERTY CXX_STANDARD 20)
 endif()
 
 option(STB_IMAGE_PLUS_INSTALL "" OFF)

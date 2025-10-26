@@ -3,8 +3,42 @@
 #include <stb_image_write.h>
 #include <stb_image_resize2.h>
 
+void DebugCheck(bool condition)
+{
+    #ifdef _DEBUG
+    if (not condition)
+        throw;
+    #endif
+}
+
 namespace stb_image_plus
 {
+
+template <std::size_t DesiredChannels>
+PixelT<DesiredChannels>::PixelT(std::initializer_list<std::uint8_t> values)
+{
+    DebugCheck(values.size() == DesiredChannels);
+    std::size_t index = 0;
+    for (auto& value : values)
+    {
+        mData[index] = value;
+        index++;
+    }
+}
+
+template <std::size_t DesiredChannels>
+const std::uint8_t& PixelT<DesiredChannels>::operator[](std::size_t coord) const
+{
+    DebugCheck(coord < DesiredChannels);
+    return mData[coord];
+}
+
+template <std::size_t DesiredChannels>
+std::uint8_t& PixelT<DesiredChannels>::operator[](std::size_t coord)
+{
+    DebugCheck(coord < DesiredChannels);
+    return mData[coord];
+}
 
 template <std::size_t DesiredChannels>
 ImageData<DesiredChannels>::ImageData() :
@@ -46,89 +80,45 @@ bool ImageData<DesiredChannels>::isValid() const
 }
 
 template <std::size_t DesiredChannels>
-unsigned char* getDataPtr(const ImageData<DesiredChannels>& image, std::size_t col, std::size_t row)
+std::span<typename ImageData<DesiredChannels>::Pixel> ImageData<DesiredChannels>::pixelSpan()
 {
-    if (!image.isValid()) throw;
-    if (col >= image.width() || row >= image.height()) throw;
-    const std::size_t indexOffset = image.width() * row + col;
-    const std::size_t dataOffset = indexOffset * DesiredChannels;
-    return image.data() + dataOffset;
+    using Pixel = typename ImageData<DesiredChannels>::Pixel;
+    Pixel* firstPixelPtr = reinterpret_cast<Pixel*>(mData);
+    const std::size_t numberOfPixels = mWidth * mHeight;
+    return std::span<Pixel>(firstPixelPtr, numberOfPixels);
 }
 
-template <>
-typename ImageData<1>::Pixel ImageData<1>::at(std::size_t col, std::size_t row) const
+template <std::size_t DesiredChannels>
+std::span<const typename ImageData<DesiredChannels>::Pixel> ImageData<DesiredChannels>::pixelSpan() const
 {
-    unsigned char* dataPtr = getDataPtr(*this, col, row);
-    typename ImageData<1>::Pixel output;
-    output.mData[0] = *dataPtr;
-    return output;
+    using Pixel = typename ImageData<DesiredChannels>::Pixel;
+    const Pixel* firstPixelPtr = reinterpret_cast<const Pixel*>(mData);
+    const std::size_t numberOfPixels = mWidth * mHeight;
+    return std::span<const Pixel>(firstPixelPtr, numberOfPixels);
 }
 
-template <>
-typename ImageData<2>::Pixel ImageData<2>::at(std::size_t col, std::size_t row) const
+template <std::size_t DesiredChannels>
+const typename ImageData<DesiredChannels>::Pixel& ImageData<DesiredChannels>::at(std::size_t col, std::size_t row) const
 {
-    unsigned char* dataPtr = getDataPtr(*this, col, row);
-    typename ImageData<2>::Pixel output;
-    output.mData[0] = *dataPtr;
-    output.mData[1] = *(dataPtr+1);
-    return output;
+    DebugCheck(isValid());
+    DebugCheck(col < mWidth);
+    DebugCheck(row < mHeight);
+    const std::size_t indexOffset = mWidth * row + col;
+    using Pixel = typename ImageData<DesiredChannels>::Pixel;
+    std::span<const Pixel> pixels = pixelSpan();
+    return pixels[indexOffset];
 }
 
-template <>
-typename ImageData<3>::Pixel ImageData<3>::at(std::size_t col, std::size_t row) const
+template <std::size_t DesiredChannels>
+typename ImageData<DesiredChannels>::Pixel& ImageData<DesiredChannels>::at(std::size_t col, std::size_t row)
 {
-    unsigned char* dataPtr = getDataPtr(*this, col, row);
-    typename ImageData<3>::Pixel output;
-    output.mData[0] = *dataPtr;
-    output.mData[1] = *(dataPtr+1);
-    output.mData[2] = *(dataPtr+2);
-    return output;
-}
-
-template <>
-typename ImageData<4>::Pixel ImageData<4>::at(std::size_t col, std::size_t row) const
-{
-    unsigned char* dataPtr = getDataPtr(*this, col, row);
-    typename ImageData<4>::Pixel output;
-    output.mData[0] = *dataPtr;
-    output.mData[1] = *(dataPtr+1);
-    output.mData[2] = *(dataPtr+2);
-    output.mData[3] = *(dataPtr+3);
-    return output;
-}
-
-template <>
-void ImageData<1>::set(std::size_t col, std::size_t row, const ImageData<1>::Pixel& pixel)
-{
-    unsigned char* dataPtr = getDataPtr(*this, col, row);
-    *dataPtr = pixel.mData[0];
-}
-
-template <>
-void ImageData<2>::set(std::size_t col, std::size_t row, const ImageData<2>::Pixel& pixel)
-{
-    unsigned char* dataPtr = getDataPtr(*this, col, row);
-    *dataPtr = pixel.mData[0];
-    *(dataPtr + 1) = pixel.mData[1];
-}
-
-template <>
-void ImageData<3>::set(std::size_t col, std::size_t row, const ImageData<3>::Pixel& pixel)
-{
-    unsigned char* dataPtr = getDataPtr(*this, col, row);
-    *dataPtr = pixel.mData[0];
-    *(dataPtr + 1) = pixel.mData[1];
-    *(dataPtr + 2) = pixel.mData[2];
-}
-
-template <>
-void ImageData<4>::set(std::size_t col, std::size_t row, const ImageData<4>::Pixel& pixel)
-{
-    unsigned char* dataPtr = getDataPtr(*this, col, row);
-    *dataPtr = pixel.mData[0];
-    *(dataPtr + 1) = pixel.mData[1];
-    *(dataPtr + 2) = pixel.mData[2];
-    *(dataPtr + 3) = pixel.mData[3];
+    DebugCheck(isValid());
+    DebugCheck(col < mWidth);
+    DebugCheck(row < mHeight);
+    const std::size_t indexOffset = mWidth * row + col;
+    using Pixel = typename ImageData<DesiredChannels>::Pixel;
+    std::span<Pixel> pixels = pixelSpan();
+    return pixels[indexOffset];
 }
 
 template <std::size_t DesiredChannels>
@@ -172,9 +162,16 @@ ImageData<DesiredChannels>::~ImageData()
     stbi_image_free(mData);
 }
 
+// template instantiations
+
 template class ImageData<1>;
 template class ImageData<2>;
 template class ImageData<3>;
 template class ImageData<4>;
+
+template class PixelT<1>;
+template class PixelT<2>;
+template class PixelT<3>;
+template class PixelT<4>;
 
 }

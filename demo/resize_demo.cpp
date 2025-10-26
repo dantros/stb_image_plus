@@ -1,5 +1,6 @@
 #include <stb_image_plus.h>
 #include <iostream>
+#include <algorithm>
 
 int main(int argc, char *argv[])
 {
@@ -50,4 +51,16 @@ int main(int argc, char *argv[])
         stb_image_plus::ImageData3 resizedImage = image.resizeToHeight(newHeight);
         resizedImage.write(output_filename + "_doubleHeight.jpg");
     }
-} 
+    {
+        std::span<stb_image_plus::ImageData3::Pixel> pixels = image.pixelSpan();
+
+        for (stb_image_plus::ImageData3::Pixel& pixel : pixels)
+        {
+            pixel[0] = std::min(static_cast<int>(pixel[0] * 1.2f), 255);
+            pixel[1] *= 0.5f;
+            pixel[2] *= 0.5f;
+        }
+
+        image.write(output_filename + "_halfColor.jpg");
+    }
+}
