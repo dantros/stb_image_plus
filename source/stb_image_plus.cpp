@@ -93,14 +93,7 @@ bool ImageData<DesiredChannels>::read(const std::string &filename)
     DebugCheck(mPixelsPtr != nullptr);
 
     int width = 0, height = 0, internalChannels = 0;
-    unsigned char* data = stbi_load(filename.c_str(), &width, &height, &internalChannels, DesiredChannels);
-
-    using PixelContainer = typename ImageData<DesiredChannels>::PixelContainer;
-    std::unique_ptr<PixelContainer> pixelContainer = std::make_unique<PixelContainer>();
-    DebugCheck(pixelContainer != nullptr);
-    pixelContainer->data = data;
-
-    mPixelsPtr.swap(pixelContainer);
+    mPixelsPtr->data = stbi_load(filename.c_str(), &width, &height, &internalChannels, DesiredChannels);
     mWidth = static_cast<std::size_t>(width);
     mHeight = static_cast<std::size_t>(height);
     mInternalChannels = static_cast<std::size_t>(internalChannels);
