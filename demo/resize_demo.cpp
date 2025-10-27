@@ -56,11 +56,35 @@ int main(int argc, char *argv[])
 
         for (stb_image_plus::ImageData3::Pixel& pixel : pixels)
         {
-            pixel[0] = std::min(static_cast<int>(pixel[0] * 1.2f), 255);
+            pixel[0] = std::min(static_cast<int>(pixel[0]), 255);
             pixel[1] *= 0.5f;
             pixel[2] *= 0.5f;
         }
 
         image.write(output_filename + "_halfColor.jpg");
+    }
+    {
+        std::size_t oldWidth = image.width();
+        std::size_t oldHeight = image.height();
+        std::span<stb_image_plus::ImageData3::Pixel> pixelSpan = image.release();
+
+        // we just invalidated ImageData
+        if (image.isValid())
+            throw;
+
+        // we can still use the allocated memory to work on.
+        for (stb_image_plus::ImageData3::Pixel& pixel : pixelSpan)
+        {
+            std::uint16_t colorSum = static_cast<std::uint16_t>(pixel[0] / 2) + static_cast<std::uint16_t>(pixel[1] / 2) + static_cast<std::uint16_t>(pixel[2] / 2);
+            colorSum = std::min(static_cast<int>(colorSum * 1.2f), 255);
+            pixel[0] = colorSum;
+            pixel[1] = colorSum;
+            pixel[2] = 255;
+        }
+
+        // and even create a new ImageData with it.
+        stb_image_plus::ImageData3 preexistingImage(pixelSpan, oldWidth, oldHeight);
+
+        preexistingImage.write(output_filename + "_preexisting.jpg");
     }
 }

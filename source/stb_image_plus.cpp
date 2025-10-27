@@ -54,7 +54,7 @@ struct ImageData<DesiredChannels>::PixelContainer
 
 template <std::size_t DesiredChannels>
 ImageData<DesiredChannels>::ImageData() :
-    mPixelsPtr(),
+    mPixelsPtr(std::make_unique<typename ImageData<DesiredChannels>::PixelContainer>()),
     mWidth(0),
     mHeight(0),
     mInternalChannels(0)
@@ -63,7 +63,7 @@ ImageData<DesiredChannels>::ImageData() :
 
 template <std::size_t DesiredChannels>
 ImageData<DesiredChannels>::ImageData(const std::string &filename) :
-    mPixelsPtr(),
+    mPixelsPtr(std::make_unique<typename ImageData<DesiredChannels>::PixelContainer>()),
     mWidth(0),
     mHeight(0),
     mInternalChannels(0)
@@ -90,7 +90,7 @@ ImageData<DesiredChannels>::ImageData(std::span<Pixel> pixelSpan, std::size_t wi
 template <std::size_t DesiredChannels>
 bool ImageData<DesiredChannels>::read(const std::string &filename)
 {
-    DebugCheck(mPixelsPtr == nullptr);
+    DebugCheck(mPixelsPtr != nullptr);
 
     int width = 0, height = 0, internalChannels = 0;
     unsigned char* data = stbi_load(filename.c_str(), &width, &height, &internalChannels, DesiredChannels);
@@ -141,6 +141,23 @@ std::span<const typename ImageData<DesiredChannels>::Pixel> ImageData<DesiredCha
     const Pixel* firstPixelPtr = reinterpret_cast<const Pixel*>(mPixelsPtr->data);
     const std::size_t numberOfPixels = mWidth * mHeight;
     return std::span<const Pixel>(firstPixelPtr, numberOfPixels);
+}
+
+template <std::size_t DesiredChannels>
+std::span<typename ImageData<DesiredChannels>::Pixel> ImageData<DesiredChannels>::release()
+{
+    DebugCheck(mPixelsPtr != nullptr);
+    std::span<Pixel> out = pixelSpan();
+
+    /* mPixelsPtr->data points to the image data, but mPixelsPtr does not own it.
+     * the span object above keeps the references to the image data. 
+     * mPixelsPtr needs to exist as an invariant. */
+    mPixelsPtr->data = nullptr;
+
+    mWidth = 0;
+    mHeight = 0;
+    mInternalChannels = 0;
+    return out;
 }
 
 template <std::size_t DesiredChannels>
