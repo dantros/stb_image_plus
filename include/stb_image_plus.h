@@ -1,10 +1,11 @@
 #pragma once
-#include <string>
+
 #include <array>
 #include <cstddef>
 #include <initializer_list>
 #include <memory>
 #include <span>
+#include <filesystem>
 
 namespace stb_image_plus
 {
@@ -29,15 +30,15 @@ public:
     using Pixel = PixelT<DesiredChannels>;
 
     ImageData();
-    ImageData(const std::string& filename);
+    ImageData(const std::filesystem::path& filename);
 
     /* ImageData takes ownership of the memory pointed to by pixelSpan.
      * Number of pixels must be equal to width * height. */
     ImageData(std::span<Pixel> pixelSpan, std::size_t width, std::size_t height);
     
     /* Initializes the current invalid object by reading an image file. */
-    bool read(const std::string& filename);
-    bool write(const std::string& filename);
+    bool read(const std::filesystem::path& filename);
+    bool write(const std::filesystem::path& filename);
     bool isValid() const;
     std::span<Pixel> pixelSpan();
     std::span<const Pixel> pixelSpan() const;
