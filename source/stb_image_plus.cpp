@@ -108,6 +108,20 @@ bool ImageData<DesiredChannels>::read(const std::filesystem::path& filename)
 }
 
 template <std::size_t DesiredChannels>
+bool ImageData<DesiredChannels>::readFromMemory(const std::uint8_t* data, std::size_t size)
+{
+    DebugCheck(mPixelsPtr != nullptr);
+    int width = 0, height = 0, internalChannels = 0;
+    stbi_uc* imageDataPtr = stbi_load_from_memory(
+        data, static_cast<int>(size), &width, &height, &internalChannels, DesiredChannels);
+    mPixelsPtr->data = reinterpret_cast<std::byte*>(imageDataPtr);
+    mWidth  = static_cast<std::size_t>(width);
+    mHeight = static_cast<std::size_t>(height);
+    mInternalChannels = static_cast<std::size_t>(internalChannels);
+    return mPixelsPtr->data != nullptr;
+}
+
+template <std::size_t DesiredChannels>
 bool ImageData<DesiredChannels>::write(const std::filesystem::path& filename)
 {
     DebugCheck(mPixelsPtr != nullptr);

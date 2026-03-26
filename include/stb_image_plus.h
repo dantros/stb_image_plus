@@ -38,6 +38,9 @@ public:
     
     /* Initializes the current invalid object by reading an image file. */
     bool read(const std::filesystem::path& filename);
+
+    /* Initializes the current invalid object by decoding image data from memory. */
+    bool readFromMemory(const std::uint8_t* data, std::size_t size);
     bool write(const std::filesystem::path& filename);
     bool isValid() const;
     std::span<Pixel> pixelSpan();
