@@ -10,10 +10,14 @@ add_library(stb_image_orig STATIC
 )
 set_property(TARGET stb_image_orig PROPERTY CXX_STANDARD 20)
 
-set(STB_IMAGE_PLUS_PUBLIC_HEADERS "include/stb_image_plus.h")
+set(STB_IMAGE_PLUS_PUBLIC_HEADERS
+    "include/stb_image_plus.h"
+    "include/stb_image_plus_gif.h"
+)
 
 add_library(stb_image_plus STATIC
     "source/stb_image_plus.cpp"
+    "source/stb_image_plus_gif.cpp"
     ${STB_IMAGE_PLUS_PUBLIC_HEADERS}
 )
 target_include_directories(stb_image_plus PRIVATE "stb_image" "include")
