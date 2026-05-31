@@ -2,8 +2,11 @@
 #include <stb_image.h>
 #include <stb_image_write.h>
 #include <stb_image_resize2.h>
+#include <algorithm>
+#include <cctype>
 #include <fstream>
 #include <cstddef>
+#include <string>
 
 void DebugCheck(bool condition)
 {
@@ -122,13 +125,37 @@ bool ImageData<DesiredChannels>::readFromMemory(const std::uint8_t* data, std::s
 }
 
 template <std::size_t DesiredChannels>
-bool ImageData<DesiredChannels>::write(const std::filesystem::path& filename)
+bool ImageData<DesiredChannels>::write(const std::filesystem::path& filename, int jpegQuality)
 {
     DebugCheck(mPixelsPtr != nullptr);
     const std::u8string filenameAsUtf8 = filename.u8string();
     const char* filenameAsCharPtr = reinterpret_cast<const char*>(filenameAsUtf8.c_str());
-    int result = stbi_write_bmp(filenameAsCharPtr, width(), height(), DesiredChannels, mPixelsPtr->data);
-    return result == 0;
+
+    std::string ext = filename.extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+    // Dispatch to the matching stb_image_write encoder. All formats here
+    // operate on the uint8 pixel buffer the class owns; HDR (which needs
+    // float input) is intentionally not included — see header comment.
+    int result = 0;
+    if (ext == ".png")
+        result = stbi_write_png(filenameAsCharPtr, width(), height(),
+                                DesiredChannels, mPixelsPtr->data,
+                                width() * DesiredChannels);
+    else if (ext == ".bmp")
+        result = stbi_write_bmp(filenameAsCharPtr, width(), height(),
+                                DesiredChannels, mPixelsPtr->data);
+    else if (ext == ".tga")
+        result = stbi_write_tga(filenameAsCharPtr, width(), height(),
+                                DesiredChannels, mPixelsPtr->data);
+    else if (ext == ".jpg" || ext == ".jpeg")
+        result = stbi_write_jpg(filenameAsCharPtr, width(), height(),
+                                DesiredChannels, mPixelsPtr->data,
+                                jpegQuality);
+    else
+        return false;   // unsupported extension
+    return result != 0;
 }
 
 template <std::size_t DesiredChannels>

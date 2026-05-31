@@ -41,7 +41,20 @@ public:
 
     /* Initializes the current invalid object by decoding image data from memory. */
     bool readFromMemory(const std::uint8_t* data, std::size_t size);
-    bool write(const std::filesystem::path& filename);
+    
+    /* Encode and write to disk. Format is selected from the filename
+     * extension (case-insensitive): .png, .bmp, .tga, .jpg, .jpeg.
+     * Returns false for unsupported extensions or on encoder failure.
+     *
+     * `jpegQuality` controls JPEG output only (1..100, ignored for the
+     * lossless formats). 90 is a reasonable default for photographic
+     * content.
+     *
+     * Note: stb_image_write also provides HDR output, but that requires
+     * float pixel data; ImageData<N> is uint8-based and therefore can't
+     * round-trip HDR. Use the underlying stbi_write_hdr directly for
+     * radiance maps. */
+    bool write(const std::filesystem::path& filename, int jpegQuality = 90);
     bool isValid() const;
     std::span<Pixel> pixelSpan();
     std::span<const Pixel> pixelSpan() const;

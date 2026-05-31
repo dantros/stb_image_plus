@@ -20,7 +20,10 @@ add_library(stb_image_plus STATIC
     "source/stb_image_plus_gif.cpp"
     ${STB_IMAGE_PLUS_PUBLIC_HEADERS}
 )
-target_include_directories(stb_image_plus PRIVATE "stb_image" "include")
+target_include_directories(stb_image_plus
+    PUBLIC  "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/stb_image"
+)
 target_link_libraries(stb_image_plus PRIVATE stb_image_orig)
 set_property(TARGET stb_image_plus PROPERTY CXX_STANDARD 20)
 
